@@ -1,0 +1,47 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: traceforge_db
+    environment:
+      POSTGRES_DB: traceforge
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: traceforge_backend
+    ports:
+      - "8001:8000"
+    volumes:
+      - ./backend:/app
+      - ./shared:/app/shared
+      - ./runtime:/app/runtime
+      - ./tests:/app/tests
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/traceforge
+      - PYTHONPATH=/app
+    depends_on:
+      - db
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    container_name: traceforge_frontend
+    ports:
+      - "5174:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:

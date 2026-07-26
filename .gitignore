@@ -1,0 +1,50 @@
+# Dependencies & Virtual Envs
+node_modules/
+.venv/
+env/
+venv/
+ENV/
+
+# Python cache & build outputs
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Vite & Frontend Build Outputs
+frontend/dist/
+frontend/node_modules/
+frontend/.vite/
+
+# Environment Variables & Local Configs
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# IDE & OS Artifacts
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.log
