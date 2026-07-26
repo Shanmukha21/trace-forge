@@ -23,8 +23,11 @@ def solve_complexity(
 
     time_complexity = "O(N)"
 
+    # 1. Check for Factorial Recursive Loop Structure (loop calling recursive function)
+    if static_facts.has_recursive_loop or scaling_model == "O(N!)":
+        time_complexity = "O(N!)"
     # Detect flat scaling anomaly: if loops exist (static_depth >= 1) but scaling_model evaluated to O(1)
-    if static_depth >= 1 and scaling_model == "O(1)":
+    elif static_depth >= 1 and scaling_model == "O(1)":
         if static_facts.has_recursion and static_facts.loop_count >= 1:
             time_complexity = "O(N log N)"
         elif static_depth >= 2:

@@ -10,6 +10,7 @@ class StaticFacts:
     loop_count: int = 0
     max_nested_loop_depth: int = 0
     has_recursion: bool = False
+    has_recursive_loop: bool = False
     function_calls: tuple[str, ...] = ()
     allocations: tuple[str, ...] = ()  # e.g. ("dict", "list", "set")
     comprehensions_count: int = 0

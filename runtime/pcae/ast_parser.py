@@ -11,6 +11,7 @@ class PCAEASTVisitor(ast.NodeVisitor):
         self.current_depth: int = 0
         self.max_nested_loop_depth: int = 0
         self.has_recursion: bool = False
+        self.has_recursive_loop: bool = False
         self.function_calls: list[str] = []
         self.allocations: list[str] = []
         self.comprehensions_count: int = 0
@@ -82,6 +83,8 @@ class PCAEASTVisitor(ast.NodeVisitor):
 
             if self._current_func and func_name == self._current_func:
                 self.has_recursion = True
+                if self.current_depth > 0:
+                    self.has_recursive_loop = True
 
         self.generic_visit(node)
 
@@ -101,6 +104,7 @@ def parse_static_facts(source_code: str) -> StaticFacts:
         loop_count=visitor.loop_count,
         max_nested_loop_depth=visitor.max_nested_loop_depth,
         has_recursion=visitor.has_recursion,
+        has_recursive_loop=visitor.has_recursive_loop,
         function_calls=tuple(visitor.function_calls),
         allocations=tuple(visitor.allocations),
         comprehensions_count=visitor.comprehensions_count,

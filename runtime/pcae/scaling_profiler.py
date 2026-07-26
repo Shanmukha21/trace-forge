@@ -59,6 +59,7 @@ def fit_growth_model(
         "O(N²)": lambda n: float(n) ** 2,
         "O(N³)": lambda n: float(n) ** 3,
         "O(2^N)": lambda n: 2.0 ** min(n, 20),
+        "O(N!)": lambda n: float(math.factorial(min(max(1, n), 10))),
     }
 
     scores: dict[str, float] = {}

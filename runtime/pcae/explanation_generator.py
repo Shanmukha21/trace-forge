@@ -21,7 +21,9 @@ def generate_explanation(
     r2 = scaling_profile.r_squared
 
     # Time Reasoning
-    if time_comp == "O(N²)":
+    if time_comp == "O(N!)":
+        time_reasoning = f"Loop body contains recursive self-calls with shrinking parameter bounds, generating a factorial search space O(N!) (N={runtime_profile.max_recursive_depth} depth)."
+    elif time_comp == "O(N²)":
         time_reasoning = f"Nested loop control flow structure (max depth {static_facts.max_nested_loop_depth}) combined with quadratic scaling regression (R² = {r2})."
     elif time_comp == "O(N log N)":
         time_reasoning = f"Divide-and-conquer recursion tree with linear merging operations confirmed via primitive scaling regression (R² = {r2})."
