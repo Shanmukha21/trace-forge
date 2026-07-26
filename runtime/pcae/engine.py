@@ -72,11 +72,20 @@ class PCAEEngine:
             analysis_result, static_facts, runtime_profile, scaling_profile
         )
 
+        # Paradigm Detection
+        from runtime.pcae.paradigm_detector import detect_algorithmic_paradigm
+
+        paradigm_data = detect_algorithmic_paradigm(
+            static_facts, cfg, runtime_profile, source_code
+        )
+
         return {
             "time_complexity": analysis_result.time_complexity,
             "space_complexity": analysis_result.space_complexity,
             "dominant_cost": analysis_result.dominant_cost,
             "confidence_score": analysis_result.confidence_score,
+            "paradigm": paradigm_data["paradigm"],
+            "paradigm_reasoning": paradigm_data["reasoning"],
             "time_reasoning": explanation.time_reasoning,
             "space_reasoning": explanation.space_reasoning,
             "evidence_breakdown": list(explanation.evidence_breakdown),
@@ -84,4 +93,5 @@ class PCAEEngine:
             "scaling_r_squared": scaling_profile.r_squared,
             "total_primitive_ops": runtime_profile.total_primitive_ops,
             "max_nested_loop_depth": static_facts.max_nested_loop_depth,
+            "has_recursion": static_facts.has_recursion,
         }

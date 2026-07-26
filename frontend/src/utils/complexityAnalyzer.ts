@@ -20,6 +20,9 @@ export interface ComplexityAnalysisResult {
 
   confidenceScore: number;
   dominantCost: string;
+  paradigm: string;
+  paradigmReasoning: string;
+  hasRecursion: boolean;
   timeReasoning: string;
   spaceReasoning: string;
   evidenceBreakdown: string[];
@@ -48,6 +51,9 @@ export const analyzeComplexity = (
       spaceCase: 'O(1)',
       confidenceScore: 100,
       dominantCost: 'InstructionExecution',
+      paradigm: 'Iterative',
+      paradigmReasoning: 'Direct execution.',
+      hasRecursion: false,
       timeReasoning: 'No execution trace recorded.',
       spaceReasoning: 'No execution trace recorded.',
       evidenceBreakdown: [],
@@ -88,6 +94,9 @@ export const analyzeComplexity = (
   let spaceComp = pcae?.space_complexity || 'O(1)';
   const confidenceScore = pcae?.confidence_score ?? 95.0;
   const dominantCost = pcae?.dominant_cost || 'Comparisons';
+  const paradigm = pcae?.paradigm || (maxStackDepth > 2 ? 'Backtracking / State Space Search' : 'Iterative');
+  const paradigmReasoning = pcae?.paradigm_reasoning || 'Executed sequence.';
+  const hasRecursion = pcae?.has_recursion ?? maxStackDepth > 2;
   const timeReasoning = pcae?.time_reasoning || `Execution finished linear pass.`;
   const spaceReasoning = pcae?.space_reasoning || `O(1) Auxiliary space.`;
   const evidenceBreakdown = pcae?.evidence_breakdown || [];
@@ -103,6 +112,8 @@ export const analyzeComplexity = (
     best = 'O(N log N)';
   } else if (timeComp === 'O(log N)') {
     best = 'O(1)';
+  } else if (timeComp === 'O(N!)') {
+    best = 'O(N!)';
   }
 
   // Color badges
@@ -111,7 +122,7 @@ export const analyzeComplexity = (
     if (comp.includes('log N') && !comp.includes('N log')) return '#10b981'; // green
     if (comp === 'O(N)') return '#38bdf8'; // sky blue
     if (comp.includes('N log N')) return '#f59e0b'; // amber
-    return '#818cf8'; // indigo / purple for O(N^2) / O(2^N)
+    return '#818cf8'; // indigo / purple for O(N^2) / O(2^N) / O(N!)
   };
 
   return {
@@ -131,6 +142,9 @@ export const analyzeComplexity = (
     spaceCase: spaceStr,
     confidenceScore,
     dominantCost,
+    paradigm,
+    paradigmReasoning,
+    hasRecursion,
     timeReasoning,
     spaceReasoning,
     evidenceBreakdown,

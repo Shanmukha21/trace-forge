@@ -12,9 +12,7 @@ import {
   Box,
   Shuffle,
   Info,
-  ArrowRight,
   CheckCircle2,
-  ListTree,
   Cpu,
   Zap,
   HardDrive,
@@ -22,6 +20,8 @@ import {
   Database,
   Grid,
   Layers,
+  GitFork,
+  CornerDownRight,
 } from 'lucide-react';
 import { useWorkspaceStore } from '../store/workspaceStore';
 import { analyzeComplexity } from '../utils/complexityAnalyzer';
@@ -63,18 +63,13 @@ export const VisualizerPanel: React.FC = () => {
     };
   }, [isPlaying, playbackSpeed, stepForward]);
 
-  // Current active event
   const currentEvent = events[currentEventIndex] || null;
-
-  // Compute complexity analysis dynamically via PCAE
   const complexity = analyzeComplexity(events, code);
 
-  // Extract variables from locals / globals
   const currentLocals = currentEvent?.locals || {};
   const currentGlobals = currentEvent?.globals || {};
   const mergedScope = { ...currentGlobals, ...currentLocals };
 
-  // Scope Data Structure Categorization
   const hashMaps: { name: string; entries: [string, any][] }[] = [];
   const sets: { name: string; items: any[] }[] = [];
   const matrices2D: { name: string; rows: any[][] }[] = [];
@@ -93,23 +88,25 @@ export const VisualizerPanel: React.FC = () => {
 
     if (Array.isArray(val)) {
       if (val.length > 0 && Array.isArray(val[0])) {
-        matrices2D.push({ name, rows: val });
+        if (val.some((r) => r.length > 0)) matrices2D.push({ name, rows: val });
       } else {
         arrays1D.push({ name, items: val });
       }
     } else if (val && typeof val === 'object') {
       if (val['__type__'] === 'set' && Array.isArray(val['items'])) {
-        sets.push({ name, items: val['items'] });
+        if (val['items'].length > 0) sets.push({ name, items: val['items'] });
       } else {
         const entries = Object.entries(val).filter(([k]) => !k.startsWith('__'));
-        hashMaps.push({ name, entries });
+        // Hide empty hash maps (0 key-value pairs)
+        if (entries.length > 0) {
+          hashMaps.push({ name, entries });
+        }
       }
     } else if (isValidScalarValue(val)) {
       scalarVars.push({ name, value: val });
     }
   });
 
-  // Compare & assign event metadata
   let compareInfo: { left?: any; op?: string; right?: any; result?: boolean } | null = null;
   if (currentEvent?.type === 'COMPARE' && currentEvent.payload) {
     compareInfo = currentEvent.payload;
@@ -120,14 +117,12 @@ export const VisualizerPanel: React.FC = () => {
     assignInfo = currentEvent.payload;
   }
 
-  // Active pointers
   const activeIndexJ = typeof currentLocals.j === 'number' ? currentLocals.j : null;
   const activeIndexI = typeof currentLocals.i === 'number' ? currentLocals.i : null;
   const activeIndexMid = typeof currentLocals.mid === 'number' ? currentLocals.mid : null;
   const activeIndexLow = typeof currentLocals.low === 'number' ? currentLocals.low : null;
   const activeIndexHigh = typeof currentLocals.high === 'number' ? currentLocals.high : null;
 
-  // Educational narrative generator
   const getStepExplanation = (): { text: string; highlightType: 'compare' | 'assign' | 'call' | 'info' | 'end' } => {
     if (!currentEvent) {
       return { text: 'Click "Run Code" to start tracing.', highlightType: 'info' };
@@ -187,7 +182,6 @@ export const VisualizerPanel: React.FC = () => {
 
   const stepExplanation = getStepExplanation();
 
-  // One-click Array preset updater
   const injectPresetArray = (presetType: 'random' | 'reverse' | 'sorted') => {
     let newNumbers: number[] = [];
     if (presetType === 'random') {
@@ -283,12 +277,10 @@ export const VisualizerPanel: React.FC = () => {
             />
           </div>
 
-          {/* Step Counter Badge */}
           <span style={styles.stepBadge}>
             {events.length === 0 ? '0 / 0' : `${currentEventIndex + 1} / ${events.length}`}
           </span>
 
-          {/* Speed Selector */}
           <div style={styles.speedGroup}>
             <Gauge size={14} color="var(--text-muted)" />
             <select
@@ -329,7 +321,6 @@ export const VisualizerPanel: React.FC = () => {
           </button>
         </div>
 
-        {/* View Toggle (Bar Height Chart vs Box Cards) */}
         <div style={styles.viewToggleGroup}>
           <button
             onClick={() => setViewMode('bars')}
@@ -380,6 +371,20 @@ export const VisualizerPanel: React.FC = () => {
                   <span style={styles.complexityMainTitle}>Program Cost Analysis Engine (PCAE)</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  {/* Algorithm Paradigm Badge */}
+                  <span
+                    style={{
+                      fontSize: '11px',
+                      fontWeight: 700,
+                      padding: '2px 8px',
+                      borderRadius: '4px',
+                      backgroundColor: 'rgba(56, 189, 248, 0.15)',
+                      color: '#38bdf8',
+                      border: '1px solid rgba(56, 189, 248, 0.3)',
+                    }}
+                  >
+                    Strategy: {complexity.paradigm}
+                  </span>
                   <span
                     style={{
                       fontSize: '11px',
@@ -479,6 +484,11 @@ export const VisualizerPanel: React.FC = () => {
                     {complexity.explanation}
                   </p>
 
+                  <p style={{ ...styles.explanationText, color: '#38bdf8' }}>
+                    <strong>Algorithmic Strategy: </strong>
+                    {complexity.paradigmReasoning}
+                  </p>
+
                   {complexity.evidenceBreakdown.length > 0 && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '4px' }}>
                       <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
@@ -532,36 +542,69 @@ export const VisualizerPanel: React.FC = () => {
               </div>
             </div>
 
-            {/* Active Call Stack Hierarchy Visualizer */}
+            {/* STATE SPACE TREE / DECISION TREE VISUALIZER (For Backtracking / Recursion) */}
             {currentEvent?.stack && currentEvent.stack.length > 0 && (
-              <div style={styles.stackCard}>
-                <div style={styles.stackTitle}>
-                  <ListTree size={14} color="var(--accent-color)" />
-                  <span>Call Stack Depth ({currentEvent.stack.length})</span>
+              <div style={styles.section}>
+                <div style={styles.sectionHeaderRow}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <GitFork size={15} color="#38bdf8" />
+                    <h4 style={styles.sectionTitle}>
+                      {complexity.paradigm.includes('Backtracking') || complexity.hasRecursion
+                        ? 'State Space Tree / Recursion Decision Tree Visualizer'
+                        : 'Call Stack Hierarchy'}
+                    </h4>
+                  </div>
+                  <span style={styles.arrayCountBadge}>Depth: {currentEvent.stack.length} level(s)</span>
                 </div>
-                <div style={styles.stackBreadcrumb}>
-                  {currentEvent.stack.map((frame, idx) => (
-                    <React.Fragment key={idx}>
-                      <span
+
+                {/* State Space Tree Hierarchy Nodes */}
+                <div style={styles.stateSpaceTreeContainer}>
+                  {currentEvent.stack.map((frameName, depthIdx) => {
+                    const isActiveLeaf = depthIdx === currentEvent.stack.length - 1;
+
+                    return (
+                      <div
+                        key={depthIdx}
                         style={{
-                          ...styles.stackTag,
-                          backgroundColor: idx === currentEvent.stack.length - 1 ? 'rgba(99, 102, 241, 0.25)' : 'var(--bg-tertiary)',
-                          color: idx === currentEvent.stack.length - 1 ? '#818cf8' : 'var(--text-muted)',
-                          borderColor: idx === currentEvent.stack.length - 1 ? 'var(--accent-color)' : 'transparent',
+                          ...styles.treeLevelRow,
+                          paddingLeft: `${depthIdx * 18}px`,
                         }}
                       >
-                        {frame}
-                      </span>
-                      {idx < currentEvent.stack.length - 1 && (
-                        <ArrowRight size={11} color="var(--text-muted)" style={{ margin: '0 2px' }} />
-                      )}
-                    </React.Fragment>
-                  ))}
+                        {depthIdx > 0 && <CornerDownRight size={13} color="#38bdf8" style={{ marginRight: '6px' }} />}
+                        <div
+                          style={{
+                            ...styles.treeNodeCard,
+                            borderColor: isActiveLeaf ? '#38bdf8' : 'var(--border-color)',
+                            backgroundColor: isActiveLeaf ? 'rgba(56, 189, 248, 0.15)' : 'var(--bg-tertiary)',
+                            boxShadow: isActiveLeaf ? '0 0 12px rgba(56, 189, 248, 0.3)' : 'none',
+                          }}
+                        >
+                          <div style={styles.treeNodeHeader}>
+                            <span style={styles.treeNodeDepthTag}>DEPTH {depthIdx}</span>
+                            <strong style={styles.treeNodeFuncName}>{frameName}()</strong>
+                          </div>
+
+                          {/* Render local state snapshot for active backtracking choices */}
+                          {isActiveLeaf && Object.keys(currentLocals).length > 0 && (
+                            <div style={styles.treeNodeStateBox}>
+                              {Object.entries(currentLocals)
+                                .filter(([k]) => !k.startsWith('__'))
+                                .map(([k, v]) => (
+                                  <span key={k} style={styles.treeNodeStatePill}>
+                                    {k}: {JSON.stringify(v)}
+                                  </span>
+                                ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}
 
-            {/* HASH MAPS / DICTIONARIES VISUALIZER */}
+            {/* HASH MAPS / DICTIONARIES VISUALIZER (Only if entries.length > 0) */}
             {hashMaps.length > 0 && (
               <div style={styles.section}>
                 <div style={styles.sectionHeaderRow}>
@@ -580,50 +623,46 @@ export const VisualizerPanel: React.FC = () => {
                     </div>
 
                     <div style={styles.hashMapGrid}>
-                      {entries.length === 0 ? (
-                        <div style={styles.emptyMapNotice}>{"{ } Empty Hash Map"}</div>
-                      ) : (
-                        entries.map(([k, v]) => {
-                          let isKeyAccessed = false;
-                          if (compareInfo && (String(compareInfo.left) === k || String(compareInfo.right) === k)) {
-                            isKeyAccessed = true;
-                          }
+                      {entries.map(([k, v]) => {
+                        let isKeyAccessed = false;
+                        if (compareInfo && (String(compareInfo.left) === k || String(compareInfo.right) === k)) {
+                          isKeyAccessed = true;
+                        }
 
-                          let isKeyUpdated = false;
-                          if (assignInfo && (assignInfo.name?.includes(name) || JSON.stringify(assignInfo.value)?.includes(k))) {
-                            isKeyUpdated = true;
-                          }
+                        let isKeyUpdated = false;
+                        if (assignInfo && (assignInfo.name?.includes(name) || JSON.stringify(assignInfo.value)?.includes(k))) {
+                          isKeyUpdated = true;
+                        }
 
-                          return (
-                            <div
-                              key={k}
-                              className={isKeyAccessed ? 'animate-pulse-compare' : ''}
-                              style={{
-                                ...styles.hashMapBucketCard,
-                                borderColor: isKeyAccessed
-                                  ? '#f59e0b'
-                                  : isKeyUpdated
-                                    ? '#10b981'
-                                    : 'var(--border-color)',
-                                backgroundColor: isKeyAccessed
-                                  ? 'rgba(245, 158, 11, 0.15)'
-                                  : isKeyUpdated
-                                    ? 'rgba(16, 185, 129, 0.15)'
-                                    : 'var(--bg-tertiary)',
-                              }}
-                            >
-                              <div style={styles.keyTag}>
-                                <span style={styles.keyTagLabel}>KEY</span>
-                                <strong style={styles.keyTagVal}>{k}</strong>
-                              </div>
-                              <div style={styles.valBox}>
-                                <span style={styles.valBoxLabel}>VAL</span>
-                                <strong style={styles.valBoxVal}>{JSON.stringify(v)}</strong>
-                              </div>
+                        return (
+                          <div
+                            key={k}
+                            className={isKeyAccessed ? 'animate-pulse-compare' : ''}
+                            style={{
+                              ...styles.hashMapBucketCard,
+                              borderColor: isKeyAccessed
+                                ? '#f59e0b'
+                                : isKeyUpdated
+                                  ? '#10b981'
+                                  : 'var(--border-color)',
+                              backgroundColor: isKeyAccessed
+                                ? 'rgba(245, 158, 11, 0.15)'
+                                : isKeyUpdated
+                                  ? 'rgba(16, 185, 129, 0.15)'
+                                  : 'var(--bg-tertiary)',
+                            }}
+                          >
+                            <div style={styles.keyTag}>
+                              <span style={styles.keyTagLabel}>KEY</span>
+                              <strong style={styles.keyTagVal}>{k}</strong>
                             </div>
-                          );
-                        })
-                      )}
+                            <div style={styles.valBox}>
+                              <span style={styles.valBoxLabel}>VAL</span>
+                              <strong style={styles.valBoxVal}>{JSON.stringify(v)}</strong>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 ))}
@@ -1198,39 +1237,6 @@ const styles: Record<string, React.CSSProperties> = {
     lineHeight: '1.4',
     color: 'var(--text-primary)',
   },
-  stackCard: {
-    backgroundColor: 'var(--bg-primary)',
-    border: '1px solid var(--border-color)',
-    borderRadius: '8px',
-    padding: '10px 14px',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '8px',
-  },
-  stackTitle: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '6px',
-    fontSize: '11px',
-    fontWeight: 700,
-    textTransform: 'uppercase',
-    letterSpacing: '0.05em',
-    color: 'var(--text-muted)',
-  },
-  stackBreadcrumb: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '4px',
-    flexWrap: 'wrap',
-  },
-  stackTag: {
-    padding: '3px 8px',
-    borderRadius: '4px',
-    fontSize: '12px',
-    fontWeight: 600,
-    fontFamily: 'var(--font-mono)',
-    border: '1px solid transparent',
-  },
   section: {
     backgroundColor: 'var(--bg-primary)',
     border: '1px solid var(--border-color)',
@@ -1253,6 +1259,58 @@ const styles: Record<string, React.CSSProperties> = {
   arrayCountBadge: {
     fontSize: '11px',
     color: 'var(--text-muted)',
+  },
+  stateSpaceTreeContainer: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px',
+    padding: '8px 0',
+  },
+  treeLevelRow: {
+    display: 'flex',
+    alignItems: 'center',
+    transition: 'all 0.2s ease',
+  },
+  treeNodeCard: {
+    padding: '8px 12px',
+    borderRadius: '6px',
+    border: '1px solid',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '4px',
+    minWidth: '180px',
+    transition: 'all 0.2s ease',
+  },
+  treeNodeHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: '8px',
+  },
+  treeNodeDepthTag: {
+    fontSize: '9px',
+    fontWeight: 800,
+    color: '#38bdf8',
+    letterSpacing: '0.05em',
+  },
+  treeNodeFuncName: {
+    fontSize: '12px',
+    fontFamily: 'var(--font-mono)',
+    color: 'var(--text-primary)',
+  },
+  treeNodeStateBox: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '4px',
+    marginTop: '2px',
+  },
+  treeNodeStatePill: {
+    fontSize: '10px',
+    fontFamily: 'var(--font-mono)',
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    padding: '1px 5px',
+    borderRadius: '3px',
+    color: 'var(--text-secondary)',
   },
   arrayContainer: {
     display: 'flex',
@@ -1278,12 +1336,6 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))',
     gap: '10px',
-  },
-  emptyMapNotice: {
-    fontSize: '12px',
-    color: 'var(--text-muted)',
-    fontFamily: 'var(--font-mono)',
-    padding: '8px',
   },
   hashMapBucketCard: {
     borderRadius: '6px',
