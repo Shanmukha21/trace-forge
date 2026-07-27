@@ -11,6 +11,9 @@ class StaticFacts:
     max_nested_loop_depth: int = 0
     has_recursion: bool = False
     has_recursive_loop: bool = False
+    has_halving_operation: bool = False
+    recursive_branching_count: int = 0
+    has_subproblem_splitting: bool = False
     function_calls: tuple[str, ...] = ()
     allocations: tuple[str, ...] = ()  # e.g. ("dict", "list", "set")
     comprehensions_count: int = 0

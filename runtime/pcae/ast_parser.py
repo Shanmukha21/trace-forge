@@ -12,17 +12,23 @@ class PCAEASTVisitor(ast.NodeVisitor):
         self.max_nested_loop_depth: int = 0
         self.has_recursion: bool = False
         self.has_recursive_loop: bool = False
+        self.has_halving_operation: bool = False
+        self.recursive_branching_count: int = 0
+        self.has_subproblem_splitting: bool = False
+
         self.function_calls: list[str] = []
         self.allocations: list[str] = []
         self.comprehensions_count: int = 0
         self.conditional_branches_count: int = 0
 
         self._current_func: str | None = None
+        self._func_recursive_calls: dict[str, int] = {}
 
     def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
         self.functions.append(node.name)
         prev_func = self._current_func
         self._current_func = node.name
+        self._func_recursive_calls[node.name] = 0
 
         self.generic_visit(node)
         self._current_func = prev_func
@@ -44,6 +50,14 @@ class PCAEASTVisitor(ast.NodeVisitor):
 
         self.generic_visit(node)
         self.current_depth -= 1
+
+    def visit_BinOp(self, node: ast.BinOp) -> None:
+        if isinstance(node.op, ast.FloorDiv | ast.RShift):
+            self.has_halving_operation = True
+        elif isinstance(node.op, ast.Div):
+            if isinstance(node.right, ast.Constant) and node.right.value == 2:
+                self.has_halving_operation = True
+        self.generic_visit(node)
 
     def visit_If(self, node: ast.If) -> None:
         self.conditional_branches_count += 1
@@ -83,8 +97,24 @@ class PCAEASTVisitor(ast.NodeVisitor):
 
             if self._current_func and func_name == self._current_func:
                 self.has_recursion = True
+                self._func_recursive_calls[self._current_func] += 1
+                if (
+                    self._func_recursive_calls[self._current_func]
+                    > self.recursive_branching_count
+                ):
+                    self.recursive_branching_count = self._func_recursive_calls[
+                        self._current_func
+                    ]
+
                 if self.current_depth > 0:
                     self.has_recursive_loop = True
+
+                # Inspect arguments for array slicing or halving
+                for arg in node.args:
+                    if isinstance(arg, ast.Subscript) and isinstance(
+                        arg.slice, ast.Slice
+                    ):
+                        self.has_subproblem_splitting = True
 
         self.generic_visit(node)
 
@@ -105,6 +135,9 @@ def parse_static_facts(source_code: str) -> StaticFacts:
         max_nested_loop_depth=visitor.max_nested_loop_depth,
         has_recursion=visitor.has_recursion,
         has_recursive_loop=visitor.has_recursive_loop,
+        has_halving_operation=visitor.has_halving_operation,
+        recursive_branching_count=visitor.recursive_branching_count,
+        has_subproblem_splitting=visitor.has_subproblem_splitting,
         function_calls=tuple(visitor.function_calls),
         allocations=tuple(visitor.allocations),
         comprehensions_count=visitor.comprehensions_count,

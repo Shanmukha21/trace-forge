@@ -16,15 +16,15 @@ def synthesize_code_for_n(source_code: str, target_n: int) -> str:
 
     new_code = re.sub(
         r'(\b[a-zA-Z_]\w*\s*=\s*)("[^"]*"|\'[^\']*\')',
-        rf'\1"{synth_str}"',
+        rf'\g<1>"{synth_str}"',
         new_code,
     )
 
     new_code = re.sub(
-        r"(\b[a-zA-Z_]\w*\s*=\s*)\[[^\]]*\]", rf"\1{arr_str}", new_code
+        r"(\b[a-zA-Z_]\w*\s*=\s*)\[[^\]]*\]", rf"\g<1>{arr_str}", new_code
     )
 
-    new_code = re.sub(r"(\bn\s*=\s*)\d+", rf"\1{target_n}", new_code)
+    new_code = re.sub(r"(\bn\s*=\s*)\d+", rf"\g<1>{target_n}", new_code)
 
     return new_code
 
@@ -93,21 +93,20 @@ def fit_growth_model(
 def run_scaling_profiler(
     source_code: str, stdin_val: str = ""
 ) -> ScalingProfile:
-    """Stage 5 Interface: Measures primitive operations across safe N=[2, 3, 4, 5]."""
+    """Stage 5 Interface: Measures primitive operations across safe N=[4, 8, 12, 16]."""
     from runtime.coordinator import run_program
 
-    target_n_list = [2, 3, 4, 5]
+    target_n_list = [4, 8, 12, 16]
     measurements: list[ScalingMeasurement] = []
 
     for target_n in target_n_list:
         try:
             synth_code = synthesize_code_for_n(source_code, target_n)
 
-            # Cap sub-run events at 1000 to prevent combinatorial memory/CPU explosion
             sub_events = []
             for evt in run_program(synth_code, stdin_val, skip_pcae=True):
                 sub_events.append(evt)
-                if len(sub_events) >= 1000:
+                if len(sub_events) >= 10000:
                     break
 
             profile = profile_runtime_execution(sub_events)
